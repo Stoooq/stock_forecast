@@ -35,14 +35,14 @@ class DataPreparator:
 
         return df
 
-    def fit_scaler(self, data: np.ndarray, scaler_type: str = 'minmax') -> None:
-        if scaler_type == 'minmax':
+    def fit_scaler(self, data: np.ndarray, scaler_type: str = "minmax") -> None:
+        if scaler_type == "minmax":
             self.scaler = MinMaxScaler()
-        elif scaler_type == 'standard':
+        elif scaler_type == "standard":
             self.scaler = StandardScaler()
         else:
             raise ValueError("scaler_type must be 'minmax' or 'standard'")
-        
+
         self.scaler.fit(data)
 
     def transform_data(self, data: np.ndarray) -> np.ndarray:
@@ -62,17 +62,21 @@ class DataPreparator:
             y.append(data[i : i + self.window_size, target_column_index])
         return np.array(X), np.array(y)
 
-    def split_train_test(self, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def split_train_test(
+        self, X: np.ndarray, y: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         test_samples = int(len(X) * self.test_size)
 
         X_train = X[:-test_samples]
         X_test = X[-test_samples:]
         y_train = y[:-test_samples]
         y_test = y[-test_samples:]
-        
+
         return X_train, X_test, y_train, y_test
 
-    def split_train_val_test(self, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def split_train_val_test(
+        self, X: np.ndarray, y: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         total_samples = len(X)
 
         test_samples = int(total_samples * self.test_size)
@@ -81,18 +85,26 @@ class DataPreparator:
         X_test = X[-test_samples:]
         y_test = y[-test_samples:]
 
-        X_val = X[-(test_samples + val_samples):-test_samples]
-        y_val = y[-(test_samples + val_samples):-test_samples]
-        
-        X_train = X[:-(test_samples + val_samples)]
-        y_train = y[:-(test_samples + val_samples)]
-        
+        X_val = X[-(test_samples + val_samples) : -test_samples]
+        y_val = y[-(test_samples + val_samples) : -test_samples]
+
+        X_train = X[: -(test_samples + val_samples)]
+        y_train = y[: -(test_samples + val_samples)]
+
         return X_train, X_val, X_test, y_train, y_val, y_test
 
-    def to_tensor(self, *arrays: np.ndarray, dtype: torch.dtype = torch.float32) -> list[torch.Tensor]:
+    def to_tensor(
+        self, *arrays: np.ndarray, dtype: torch.dtype = torch.float32
+    ) -> list[torch.Tensor]:
         return [torch.tensor(arr, dtype=dtype) for arr in arrays]
 
-    def create_dataloader(self, X: torch.Tensor, y: torch.Tensor, batch_size: int = 64, shuffle: bool = True) -> DataLoader:
+    def create_dataloader(
+        self,
+        X: torch.Tensor,
+        y: torch.Tensor,
+        batch_size: int = 64,
+        shuffle: bool = True,
+    ) -> DataLoader:
         dataset = TensorDataset(X, y)
         data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
         return data_loader
