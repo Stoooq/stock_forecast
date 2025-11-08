@@ -45,6 +45,9 @@ class DataPreparator:
 
         self.scaler.fit(data)
 
+    def get_scaler(self):
+        return self.scaler
+
     def transform_data(self, data: np.ndarray) -> np.ndarray:
         data_scaled = self.scaler.transform(data)
         return data_scaled
@@ -59,7 +62,7 @@ class DataPreparator:
         X, y = [], []
         for i in range(len(data) - self.window_size):
             X.append(data[i : i + self.window_size])
-            y.append(data[i : i + self.window_size, target_column_index])
+            y.append(data[i + self.window_size, target_column_index])
         return np.array(X), np.array(y)
 
     def split_train_test(
@@ -103,7 +106,7 @@ class DataPreparator:
         X: torch.Tensor,
         y: torch.Tensor,
         batch_size: int = 64,
-        shuffle: bool = True,
+        shuffle: bool = False,
     ) -> DataLoader:
         dataset = TensorDataset(X, y)
         data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)

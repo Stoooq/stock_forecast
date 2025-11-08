@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class ModelTrainer:
@@ -19,7 +21,7 @@ class ModelTrainer:
             y_batch = y_batch.to(self.device)
 
             output = self.model(X_batch)
-            loss = self.loss_fn(output, y_batch)
+            loss = self.loss_fn(output, y_batch.unsqueeze(1))
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -40,7 +42,7 @@ class ModelTrainer:
                 y_batch = y_batch.to(self.device)
 
                 output = self.model(X_batch)
-                loss = self.loss_fn(output, y_batch)
+                loss = self.loss_fn(output, y_batch.unsqueeze(1))
 
                 epoch_loss += loss.item()
 
@@ -89,3 +91,150 @@ class ModelTrainer:
             predictions = self.model(X)
 
         return predictions
+
+    def evaluate(self, test_loader) -> dict:
+        self.model.eval()
+        total_loss = 0.0
+        all_predictions = []
+        all_targets = []
+
+        with torch.no_grad():
+            for X_batch, y_batch in test_loader:
+                X_batch = X_batch.to(self.device)
+                y_batch = y_batch.to(self.device)
+
+                output = self.model(X_batch)
+                loss = self.loss_fn(output, y_batch.unsqueeze(1))
+
+                total_loss += loss.item()
+
+                predictions = output.cpu().numpy()
+                targets = y_batch.cpu().numpy()
+
+                all_predictions.extend(predictions.flatten())
+                all_targets.extend(targets.flatten())
+
+        all_predictions = np.array(all_predictions)
+        all_targets = np.array(all_targets)
+
+        avg_loss = total_loss / len(test_loader)
+        mae = np.mean(np.abs(all_predictions - all_targets))
+        rmse = np.sqrt(np.mean((all_predictions - all_targets) ** 2))
+
+        return {
+            "loss": avg_loss,
+            "mae": mae,
+            "rmse": rmse,
+            "predictions": all_predictions,
+            "targets": all_targets
+        }
+    
+    def plot_history(self, save_path=None, figsize=(12, 5)):
+        if not self.train_loss_history:
+            print("Train history is empty")
+            return
+
+        plt.figure(figsize=figsize)
+        
+        epochs = range(1, len(self.train_loss_history) + 1)
+        
+        plt.plot(epochs, self.train_loss_history, 'b-', label='Train Loss', linewidth=2)
+        
+        if self.val_loss_history:
+            plt.plot(epochs, self.val_loss_history, 'r-', label='Validation Loss', linewidth=2)
+        
+        plt.xlabel('Epoch', fontsize=12)
+        plt.ylabel('Loss', fontsize=12)
+        plt.title('Training History', fontsize=14, fontweight='bold')
+        plt.legend(fontsize=10)
+        plt.grid(True, alpha=0.3)
+        
+        min_train_loss = min(self.train_loss_history)
+        min_train_epoch = self.train_loss_history.index(min_train_loss) + 1
+        plt.plot(min_train_epoch, min_train_loss, 'bo', markersize=8)
+        plt.annotate(f'Min: {min_train_loss:.4f}', 
+                    xy=(min_train_epoch, min_train_loss),
+                    xytext=(10, 10), textcoords='offset points',
+                    bbox=dict(boxstyle='round,pad=0.5', facecolor='blue', alpha=0.3),
+                    fontsize=9)
+        
+        if self.val_loss_history:
+            min_val_loss = min(self.val_loss_history)
+            min_val_epoch = self.val_loss_history.index(min_val_loss) + 1
+            plt.plot(min_val_epoch, min_val_loss, 'ro', markersize=8)
+            plt.annotate(f'Min: {min_val_loss:.4f}', 
+                        xy=(min_val_epoch, min_val_loss),
+                        xytext=(10, -20), textcoords='offset points',
+                        bbox=dict(boxstyle='round,pad=0.5', facecolor='red', alpha=0.3),
+                        fontsize=9)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"Plot saved: {save_path}")
+        
+        plt.show()
+
+    def plot_predictions(
+        self, test_loader, scaler=None, save_path=None, figsize=(14, 6), max_samples=None
+    ):
+        metrics = self.evaluate(test_loader)
+        predictions = metrics["predictions"]
+        targets = metrics["targets"]
+
+        if scaler is not None:
+            num_features = scaler.n_features_in_
+            
+            pred_full = np.zeros((len(predictions), num_features))
+            pred_full[:, 0] = predictions
+            predictions_original = scaler.inverse_transform(pred_full)[:, 0]
+            
+            target_full = np.zeros((len(targets), num_features))
+            target_full[:, 0] = targets
+            targets_original = scaler.inverse_transform(target_full)[:, 0]
+        else:
+            predictions_original = predictions
+            targets_original = targets
+
+        if max_samples is not None and len(predictions_original) > max_samples:
+            predictions_original = predictions_original[:max_samples]
+            targets_original = targets_original[:max_samples]
+
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        indices = range(len(predictions_original))
+        
+        ax.plot(
+            indices,
+            targets_original,
+            label="Actual Gold Price",
+            color="blue",
+            linewidth=2,
+            alpha=0.8
+        )
+        
+        ax.plot(
+            indices,
+            predictions_original,
+            label="Predicted Price",
+            color="red",
+            linewidth=2,
+            linestyle="--",
+            alpha=0.8
+        )
+        
+        ax.set_xlabel("Sample Index", fontsize=12)
+        ax.set_ylabel("Gold Price (USD)" if scaler else "Normalized Value", fontsize=12)
+        ax.set_title("Gold Price: Actual vs Predicted (Use toolbar to zoom/pan)", fontsize=14, fontweight="bold")
+        ax.legend(fontsize=11, loc='best')
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            print(f"Predictions plot saved: {save_path}")
+        
+        plt.ion()
+        plt.show(block=True)
