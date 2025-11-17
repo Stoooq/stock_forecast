@@ -2,7 +2,7 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset
 import torch
 import numpy as np
 import pandas as pd
-from typing import Optional, Literal
+from typing import Literal
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 class StockDataGenerator(Dataset):
@@ -15,19 +15,17 @@ class StockDataGenerator(Dataset):
             target_type: Literal['log_return', 'price', 'log_price'] = 'log_return',
             split: Literal['train', 'val', 'test'] = 'train',
             scaler = None,
-            feature_columns: Optional[list[str]] = None
     ):
-        self.csv_path = csv_path
-        self.window_size = window_size
-        self.test_size = test_size
-        self.validation_size = validation_size
-        self.target_type = target_type
-        self.split = split
-        self.scaler = scaler
-        self.feature_columns = feature_columns
+        self.csv_path = csv_path #
+        self.window_size = window_size #
+        self.test_size = test_size #
+        self.validation_size = validation_size #
+        self.target_type = target_type #
+        self.split = split #
+        self.scaler = scaler #
         
-        self.df = pd.read_csv(csv_path, parse_dates=["Date"])
-        self.sequences = []
+        self.df = pd.read_csv(csv_path, parse_dates=["Date"]) #
+        self.sequences = [] #
 
         self.prepare_data()
 
@@ -106,20 +104,30 @@ class StockDataGenerator(Dataset):
         batch_size: int = 64,
         shuffle: bool = False,
         num_workers: int = 0,
-        pin_memory: bool = True
+        pin_memory: bool = False
     ) -> DataLoader:
         def collate_fn(batch):
-            X_batch = np.stack([item[0] for item in batch])
-            y_batch = np.array([item[1] for item in batch])
-            return torch.tensor(X_batch, dtype=torch.float32), torch.tensor(y_batch, dtype=torch.float32)
-        
+            try:
+                # Bezpieczniejsze stackowanie
+                X_list = [item[0] for item in batch]
+                y_list = [item[1] for item in batch]
+                
+                X_batch = torch.from_numpy(np.stack(X_list)).float()
+                y_batch = torch.from_numpy(np.stack(y_list)).float().squeeze()
+                
+                return X_batch, y_batch
+            except Exception as e:
+                print(f"Error in collate_fn: {e}")
+                raise
+
         return DataLoader(
             self,
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=pin_memory,
-            collate_fn=collate_fn
+            collate_fn=collate_fn,
+            persistent_workers=False
         )
     
     def prepare_data(self, scaler_type: str = 'minmax') -> None:
@@ -144,8 +152,8 @@ class StockDataGenerator(Dataset):
                 raise ValueError(f"For split='{self.split}', you must provide scaler from train!")
             df_split[scale_cols] = self._transform_data(df_split[scale_cols].values)
     
-        feature_cols = [col for col in df_split.columns if col != 'Date']
-        data = df_split[feature_cols].values
+        # feature_cols = [col for col in df_split.columns if col != 'Date']
+        data = df_split[all_feature_cols].values
 
         if self.target_type == 'log_return':
             target_col = 'log_return'
@@ -156,7 +164,7 @@ class StockDataGenerator(Dataset):
                 df_split['log_price'] = np.log(df_split['Close'])
             target_col = 'log_price'
         
-        target_idx = feature_cols.index(target_col)
+        target_idx = all_feature_cols.index(target_col)
 
         X, y = self._create_sequence(data, target_column_index=target_idx)
         self.sequences = [(X[i], y[i]) for i in range(len(X))]
