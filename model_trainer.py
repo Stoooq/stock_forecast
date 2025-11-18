@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 class ModelTrainer:
@@ -54,7 +55,7 @@ class ModelTrainer:
     def fit(
         self, train_loader, val_loader=None, epochs: int = 100, verbose: bool = True
     ):
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs)):
             train_loss = self.train_epoch(train_loader)
             self.train_loss_history.append(train_loss)
 
@@ -185,19 +186,22 @@ class ModelTrainer:
         predictions = metrics["predictions"]
         targets = metrics["targets"]
 
-        if scaler is not None:
-            num_features = scaler.n_features_in_
+        predictions_original = predictions
+        targets_original = targets
+
+        # if scaler is not None:
+        #     num_features = scaler.n_features_in_
             
-            pred_full = np.zeros((len(predictions), num_features))
-            pred_full[:, 0] = predictions
-            predictions_original = scaler.inverse_transform(pred_full)[:, 0]
+        #     pred_full = np.zeros((len(predictions), num_features))
+        #     pred_full[:, 0] = predictions
+        #     predictions_original = scaler.inverse_transform(pred_full)[:, 0]
             
-            target_full = np.zeros((len(targets), num_features))
-            target_full[:, 0] = targets
-            targets_original = scaler.inverse_transform(target_full)[:, 0]
-        else:
-            predictions_original = predictions
-            targets_original = targets
+        #     target_full = np.zeros((len(targets), num_features))
+        #     target_full[:, 0] = targets
+        #     targets_original = scaler.inverse_transform(target_full)[:, 0]
+        # else:
+        #     predictions_original = predictions
+        #     targets_original = targets
 
         if max_samples is not None and len(predictions_original) > max_samples:
             predictions_original = predictions_original[:max_samples]

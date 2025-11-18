@@ -224,4 +224,4 @@ class StockDataGenerator(Dataset):
         test_gen.prepare_data()
         test_loader = test_gen.create_dataloader(batch_size=batch_size, shuffle=False)
 
-        return train_loader, val_loader, test_loader
+        return train_loader, val_loader, test_loader, train_gen._get_scaler()

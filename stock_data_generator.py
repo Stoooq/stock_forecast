@@ -192,7 +192,7 @@ class StockDataGenerator(Dataset):
             split='train',
             scaler=None
         )
-        train_loader = train_gen.to_dataloader(batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        train_loader = train_gen.to_dataloader(batch_size=batch_size, shuffle=False, num_workers=num_workers)
         
         val_gen = StockDataGenerator(
             csv_path=csv_path,
