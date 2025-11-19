@@ -18,13 +18,14 @@ class Evaluator:
 
     @staticmethod
     def _rmse(y_true, y_pred):
-        return float(root_mean_squared_error(y_true, y_pred, squared=False))
+        return float(root_mean_squared_error(y_true, y_pred))
 
     @staticmethod
     def _directional_accuracy(y_true, y_pred):
         return float(np.mean(np.sign(y_true[1:] - y_true[:-1]) == np.sign(y_pred[1:] - y_pred[:-1])))
 
     def evaluate(self, test_loader):
+        self.model.eval()
         y, pred = [], []
 
         for X_batch, y_batch in test_loader:
@@ -34,7 +35,7 @@ class Evaluator:
             pred_batch = self.model(X_batch)
 
             y.append(y_batch.detach().cpu().numpy().reshape(-1))
-            pred.append(pred_batch.reshape(-1))
+            pred.append(pred_batch.detach().cpu().numpy().reshape(-1))
 
         y_true = np.concatenate(y)
         y_pred = np.concatenate(pred)
@@ -43,4 +44,5 @@ class Evaluator:
         for name in self.metrics_to_compute:
             if name in self.available_metrics:
                 results[name] = self.available_metrics[name](y_true, y_pred)
-        return results
+
+        return y_true, y_pred, results
