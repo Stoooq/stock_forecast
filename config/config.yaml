@@ -8,7 +8,7 @@ data:
   exclude_cols: ['Date', 'Currency']
   no_scale_cols: ['log_return', 'log_volume']
   scaler_type: "minmax"
-  window_size: 30
+  window_size: 60
   batch_size: 64
   split:
     train: 0.7
@@ -22,13 +22,13 @@ model:
   num_layers: 2
 
 training:
-  epochs: 100
+  epochs: 10
   learning_rate: 0.001
   optimizer: "adam"
   device: "cpu"
   grad_clip: 1.0
   save_dir: "artifacts/models"
   name: "lstm_01"
-  resume_from_checkpoint: true
+  resume_from_checkpoint: False
 
 evaluation:

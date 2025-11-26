@@ -20,20 +20,88 @@ class DataModule:
         return df
 
     def prepare_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        df["YesterdayClose"] = df["Close"].shift(1)
+        df["YesterdayOpenLogR"] = np.log(df["Open"] / df["Open"].shift(1)).shift(1)
+        df["YesterdayHighLogR"] = np.log(df["High"] / df["High"].shift(1)).shift(1)
+        df["YesterdayLowLogR"] = np.log(df["Low"] / df["Low"].shift(1)).shift(1)
+        df["YesterdayVolumeLogR"] = np.log((df["Volume"] + 1) / (df["Volume"].shift(1) + 1)).shift(1)
+        df["YesterdayCloseLogR"] = np.log(df["Close"] / df["Close"].shift(1)).shift(1)
+
         df["log_return"] = np.log(df["Close"] / df["Close"].shift(1))
         df["log_volume"] = np.log(df["Volume"] + 1)
+
+        for window in [10, 20, 30]:
+            df[f"MA{window}"] = df["Close"].rolling(window=window).mean()
+        
+        df["EMA10"] = df["Close"].ewm(span=10, adjust=False).mean()
+        df["EMA30"] = df["Close"].ewm(span=30, adjust=False).mean()
+
+        if "Date" in df.columns:
+            dates = pd.to_datetime(df["Date"])
+            df["DayOfWeek"] = dates.dt.dayofweek
+            df["DayOfMonth"] = dates.dt.day
+            df["MonthNumber"] = dates.dt.month
+        else:
+            dates = pd.to_datetime(df.index)
+            df["DayOfWeek"] = dates.dayofweek
+            df["DayOfMonth"] = dates.day
+            df["MonthNumber"] = dates.month
+
+        delta = df["Close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / (loss + 1e-10)
+        df["RSI"] = 100 - (100 / (1 + rs))
+
+        exp12 = df["Close"].ewm(span=12, adjust=False).mean()
+        exp26 = df["Close"].ewm(span=26, adjust=False).mean()
+        df["MACD"] = exp12 - exp26
+        df["MACD_Signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
+
+        sma20 = df["Close"].rolling(window=20).mean()
+        std20 = df["Close"].rolling(window=20).std()
+        df["BollingerUpper"] = sma20 + (std20 * 2)
+        df["BollingerLower"] = sma20 - (std20 * 2)
+
+        df["OBV"] = (np.sign(df["Close"].diff()) * df["Volume"]).fillna(0).cumsum()
+
+        log_ret = np.log(df["Close"] / df["Close"].shift(1))
+        for window in [10, 20, 30]:
+            df[f"Volatility_{window}"] = log_ret.rolling(window=window).std()
+
+        df["volatility_5d"] = log_ret.rolling(window=5).std()
+        df["volatility_20d"] = log_ret.rolling(window=20).std()
+
+        df["momentum_5d"] = df["Close"] / df["Close"].shift(5) - 1
+        df["momentum_20d"] = df["Close"] / df["Close"].shift(20) - 1
+        
+        df["skew_5d"] = log_ret.rolling(window=5).skew()
+        
+        df["ZScore"] = (df["Close"] - sma20) / (std20 + 1e-10)
+
+        df["overnight_gap"] = (df["Open"] - df["Close"].shift(1)) / df["Close"].shift(1)
+        
+        df["abnormal_vol"] = df["Volume"] / (df["Volume"].rolling(window=20).mean() + 1)
+
+        external_cols = [
+            "insider_shares", "insider_amount", "insider_buy_flag", 
+            "sentiment", "num_articles"
+        ]
+        for col in external_cols:
+            if col not in df.columns:
+                df[col] = 0.0
 
         df["high_low_ratio"] = df["High"] / df["Low"]
         df["close_open_ratio"] = df["Close"] / df["Open"]
         df["price_range"] = (df["High"] - df["Low"]) / df["Close"]
-        df["body_ratio"] = abs(df["Close"] - df["Open"]) / (
-            df["High"] - df["Low"] + 1e-10
-        )
+        df["body_ratio"] = abs(df["Close"] - df["Open"]) / (df["High"] - df["Low"] + 1e-10)
 
         for window in [5, 10, 20, 50]:
             df[f"sma_{window}"] = df["Close"].rolling(window=window).mean()
             df[f"price_to_sma_{window}"] = df["Close"] / df[f"sma_{window}"]
 
+        df = df.dropna()
+        
         return df
     
     def get_dates(self, df: pd.DataFrame):
@@ -106,9 +174,25 @@ class DataModule:
 
         self.fit_scaler(train_df[scale_cols].values)
 
-        train_arr = self.transform_data(train_df[scale_cols].values)
-        val_arr = self.transform_data(val_df[scale_cols].values)
-        test_arr = self.transform_data(test_df[scale_cols].values)
+        def prepare_array(dataframe):
+            data_map = {}
+            
+            scaled_data = self.transform_data(dataframe[scale_cols].values)
+            for i, col in enumerate(scale_cols):
+                data_map[col] = scaled_data[:, i]
+
+            for col in self.cfg.no_scale_cols:
+                data_map[col] = dataframe[col].values
+
+            final_data = []
+            for col in feature_cols:
+                final_data.append(data_map[col].reshape(-1, 1))
+
+            return np.hstack(final_data)
+
+        train_arr = prepare_array(train_df)
+        val_arr = prepare_array(val_df)
+        test_arr = prepare_array(test_df)
 
         target_idx = feature_cols.index(self.cfg.target_col)
 
