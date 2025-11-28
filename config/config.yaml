@@ -4,10 +4,10 @@ experiment:
 
 data:
   csv_path: "/Users/miloszglowacki/Desktop/code/python/stock_forecast/datasets/gold.csv"
-  target_col: "Close"
+  target_col: "log_return"
   exclude_cols: ['Date', 'Currency']
-  no_scale_cols: ['log_return', 'log_volume']
-  scaler_type: "minmax"
+  no_scale_cols: ['log_volume']
+  scaler_type: "standard"
   window_size: 60
   batch_size: 64
   split:
@@ -29,6 +29,6 @@ training:
   grad_clip: 1.0
   save_dir: "artifacts/models"
   name: "lstm_01"
-  resume_from_checkpoint: False
+  resume_from_checkpoint: True
 
 evaluation:
