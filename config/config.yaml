@@ -29,6 +29,6 @@ training:
   grad_clip: 1.0
   save_dir: "artifacts/models"
   name: "lstm_01"
-  resume_from_checkpoint: True
+  resume_from_checkpoint: False
 
 evaluation:

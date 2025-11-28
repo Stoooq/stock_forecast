@@ -9,9 +9,9 @@ class Backtester:
     def generate_signals(self):
         self.signals = []
         for y in self.y_pred:
-            if y > 0.0015:
+            if y > 0:
                 self.signals.append(1)
-            elif y < -0.008:
+            elif y < -0.0008:
                 self.signals.append(-1)
             else:
                 self.signals.append(0)

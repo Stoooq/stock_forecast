@@ -16,7 +16,10 @@ device = cfg.device if torch.cuda.is_available() and cfg.device == "cuda" else "
 data_module = DataModule(cfg.data)
 train_loader, val_loader, test_loader, scaler, test_dates = data_module.get_loaders()
 
-model = MyModel(input_size=55, hidden_size=256, num_layers=2)
+for x, _ in train_loader:
+    print(x.shape)
+
+model = MyModel(input_size=55, hidden_size=512, num_layers=2)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.MSELoss()
 

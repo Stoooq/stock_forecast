@@ -69,19 +69,19 @@ class DataModule:
         for window in [10, 20, 30]:
             df[f"Volatility_{window}"] = log_ret.rolling(window=window).std()
 
-        # df["volatility_5d"] = log_ret.rolling(window=5).std()
-        # df["volatility_20d"] = log_ret.rolling(window=20).std()
+        df["volatility_5d"] = log_ret.rolling(window=5).std()
+        df["volatility_20d"] = log_ret.rolling(window=20).std()
 
-        # df["momentum_5d"] = df["Close"] / df["Close"].shift(5) - 1
-        # df["momentum_20d"] = df["Close"] / df["Close"].shift(20) - 1
+        df["momentum_5d"] = df["Close"] / df["Close"].shift(5) - 1
+        df["momentum_20d"] = df["Close"] / df["Close"].shift(20) - 1
         
-        # df["skew_5d"] = log_ret.rolling(window=5).skew()
+        df["skew_5d"] = log_ret.rolling(window=5).skew()
         
-        # df["ZScore"] = (df["Close"] - sma20) / (std20 + 1e-10)
+        df["ZScore"] = (df["Close"] - sma20) / (std20 + 1e-10)
 
-        # df["overnight_gap"] = (df["Open"] - df["Close"].shift(1)) / df["Close"].shift(1)
+        df["overnight_gap"] = (df["Open"] - df["Close"].shift(1)) / df["Close"].shift(1)
         
-        # df["abnormal_vol"] = df["Volume"] / (df["Volume"].rolling(window=20).mean() + 1)
+        df["abnormal_vol"] = df["Volume"] / (df["Volume"].rolling(window=20).mean() + 1)
 
         external_cols = [
             "insider_shares", "insider_amount", "insider_buy_flag", 
