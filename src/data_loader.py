@@ -80,6 +80,8 @@ class YahooFinanceLoader(BaseDataLoader):
         desired_columns = ["date", "open", "high", "low", "close", "volume"]
         df = df[desired_columns]
 
+        df = df.set_index("date")
+
         return df
 
     def save_to_disk(self, data, filename):

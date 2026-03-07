@@ -13,7 +13,6 @@ class DataPreprocessor:
     def add_features(self, data: pd.DataFrame) -> pd.DataFrame:
         for key, value in self.features.items():
             method_name = f"_compute_{key}"
-            print(key, value)
 
             if hasattr(self, method_name):
                 func = getattr(self, method_name)
