@@ -1,4 +1,5 @@
 from src.data_loader import YahooFinanceLoader
+from src.features import DataPreprocessor
 
 
 def main():
@@ -13,7 +14,16 @@ def main():
 
     data = yf_loader.process()
 
-    print(data)
+    data_pre = DataPreprocessor(
+        features={
+            "log_return": {"periods": [1, 2, 3], "column": "close"},
+            "rsi": {"periods": [14, 21, 28], "column": "close"},
+        }
+    )
+
+    df = data_pre.add_features(data)
+
+    print(df)
 
 
 if __name__ == "__main__":
