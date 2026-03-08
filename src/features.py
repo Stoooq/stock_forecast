@@ -22,6 +22,12 @@ class DataPreprocessor:
 
         return data
 
+    def _compute_target_direction(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        df["target_direction"] = (df[column].shift(-1) > df[column]).astype(int)
+
+        return df
+
     def _compute_log_return(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         column = kwargs.get("column", "close")
         periods = kwargs.get("periods", [1])
@@ -58,16 +64,23 @@ class DataPreprocessor:
 
         return df
 
-    def fit(self, data: pd.DataFrame):
+    def fit(self, data: pd.DataFrame, target_col: str):
         self.scaler = StandardScaler()
-        self.scaler.fit(data)
+        self.features_to_scale = [col for col in data.columns if col != target_col]
+        self.scaler.fit(data[self.features_to_scale])
 
     def transform(self, data: pd.DataFrame) -> pd.DataFrame:
-        scaled_data = self.scaler.transform(data)
-        return pd.DataFrame(scaled_data, index=data.index, columns=data.columns)
+        result = data.copy()
+        result[self.features_to_scale] = self.scaler.transform(data[self.features_to_scale])
+        return result
 
-    def fit_transorm(self, data: pd.DataFrame):
-        self.fit(data)
+    def inverse_transform(self, data: pd.DataFrame) -> pd.DataFrame:
+        result = data.copy()
+        result[self.features_to_scale] = self.scaler.inverse_transform(data[self.features_to_scale])
+        return result
+
+    def fit_transorm(self, data: pd.DataFrame, target_col: str):
+        self.fit(data, target_col)
         data_scaled = self.transform(data)
 
         return data_scaled

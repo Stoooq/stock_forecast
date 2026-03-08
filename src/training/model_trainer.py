@@ -30,7 +30,7 @@ class ModelTrainer:
             y_batch = y.to(self.device)
 
             output = self.model(X_batch)
-            print(output.shape, y_batch.shape)
+
             loss = self.loss_fn(output, y_batch.unsqueeze(1))
 
             self.optim.zero_grad()
@@ -70,6 +70,7 @@ class ModelTrainer:
 
             for epoch in range(params["epochs"]):
                 train_loss = self._train_epoch()
+                print(train_loss)
 
                 val_loss = self._validate_epoch()
 
