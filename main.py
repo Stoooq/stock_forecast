@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 
 from src.data_loader import YahooFinanceLoader
 from src.dataset import TimeSeriesDataset
+from src.evaluation.backtester import VectorizedBacktester
 from src.evaluation.evaluator import ModelEvaluator
 from src.features import DataPreprocessor
 from src.models.simple_linear import SimpleLinear
@@ -86,13 +87,6 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
-    i = 0
-    for x, y in train_loader:
-        if i > 5:
-            break
-        print(x.shape, y.shape)
-        i += 1
-
     model = SimpleLSTM(input_size=23, hidden_size=128, num_layers=2, output_size=1)
     loss_fn = nn.HuberLoss()
     optim = torch.optim.AdamW(model.parameters(), lr=0.0001)
@@ -119,9 +113,19 @@ def main():
         target_col="log_return_24",
     )
 
-    test_metrics = evaluator.evaluate()
+    test_metrics, y_true, y_pred = evaluator.evaluate()
 
     print(test_metrics)
+
+    dates = test_df.index[14:]
+
+    backtester = VectorizedBacktester(dates, y_true, y_pred)
+
+    metrics = backtester.run()
+
+    print(metrics)
+
+    backtester.plot_equity()
 
 
 if __name__ == "__main__":

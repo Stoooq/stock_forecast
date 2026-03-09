@@ -52,8 +52,8 @@ class ModelEvaluator:
         mae = float(mean_absolute_error(y_true, y_pred))
         da = float(
             np.mean(
-                np.sign(y_true[1:] - y_true[:-1]) == np.sign(y_pred[1:] - y_pred[:-1])
-            )
+                np.sign(y_true[1:] - y_true[:-1]) == np.sign(y_pred[1:] - y_pred[:-1]),
+            ),
         )
 
         return {"rmse": rmse, "mae": mae, "directional_accuracy": da}
@@ -105,4 +105,4 @@ class ModelEvaluator:
 
         self.plot_results(y_true, y_pred)
 
-        return metrics
+        return metrics, y_true, y_pred
