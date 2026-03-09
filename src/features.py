@@ -64,6 +64,81 @@ class DataPreprocessor:
 
         return df
 
+    def _compute_rolling_volatility(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        periods = kwargs.get("periods", [14])
+
+        if not isinstance(periods, list):
+            periods = [periods]
+
+        returns = df[column].pct_change()
+
+        for period in periods:
+            col_name = f"volatility_{period}"
+            df[col_name] = returns.rolling(window=period).std()
+
+        return df
+
+    def _compute_momentum(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        periods = kwargs.get("periods", [10])
+
+        if not isinstance(periods, list):
+            periods = [periods]
+
+        for period in periods:
+            col_name = f"momentum_{period}"
+            df[col_name] = df[column].pct_change(periods=period)
+
+        return df
+
+    def _compute_zscore(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        periods = kwargs.get("periods", [20])
+
+        if not isinstance(periods, list):
+            periods = [periods]
+
+        for period in periods:
+            col_name = f"zscore_{period}"
+            rolling_mean = df[column].rolling(window=period).mean()
+            rolling_std = df[column].rolling(window=period).std()
+            df[col_name] = (df[column] - rolling_mean) / rolling_std
+
+        return df
+
+    def _compute_macd(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        fast_period = kwargs.get("fast_period", 12)
+        slow_period = kwargs.get("slow_period", 26)
+        signal_period = kwargs.get("signal_period", 9)
+
+        ema_fast = df[column].ewm(span=fast_period, adjust=False).mean()
+        ema_slow = df[column].ewm(span=slow_period, adjust=False).mean()
+
+        macd_line = ema_fast - ema_slow
+        signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
+
+        col_prefix = f"macd_{fast_period}_{slow_period}"
+        df[f"{col_prefix}_line"] = macd_line
+        df[f"{col_prefix}_signal"] = signal_line
+        df[f"{col_prefix}_hist"] = macd_line - signal_line
+
+        return df
+
+    def _compute_ema(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        column = kwargs.get("column", "close")
+        periods = kwargs.get("periods", [10, 20, 50])
+
+        if not isinstance(periods, list):
+            periods = [periods]
+
+        for period in periods:
+            col_name = f"ema_{period}"
+            df[col_name] = df[column].ewm(span=period, adjust=False).mean()
+
+        return df
+
     def fit(self, data: pd.DataFrame, target_col: str):
         self.scaler = StandardScaler()
         self.features_to_scale = [col for col in data.columns if col != target_col]

@@ -4,35 +4,50 @@ from torch.utils.data import DataLoader
 
 from src.data_loader import YahooFinanceLoader
 from src.dataset import TimeSeriesDataset
-from src.evaluation.model_evaluator import ModelEvaluator
+from src.evaluation.evaluator import ModelEvaluator
 from src.features import DataPreprocessor
+from src.models.simple_linear import SimpleLinear
 from src.models.simple_lstm import SimpleLSTM
-from src.training.model_trainer import ModelTrainer
+from src.training.trainer import ModelTrainer
 
 
 def main():
     yf_loader = YahooFinanceLoader(
         config="c",
         tickers=["AAPL"],
-        start_date="2022-01-01",
-        end_date="2025-01-01",
+        start_date="2024-06-01",
+        end_date="2026-06-01",
         save_dir="data/raw/",
-        interval="1d",
+        interval="1h",
     )
 
     raw_df = yf_loader.process()
 
     preprocessor = DataPreprocessor(
         features={
-            "log_return": {"periods": [1, 2, 3], "column": "close"},
-            "rsi": {"periods": [14, 21, 28], "column": "close"},
+            "log_return": {"periods": [1 * 24, 2 * 24, 3 * 24], "column": "close"},
+            "rsi": {"periods": [14 * 24, 21 * 24, 28 * 24], "column": "close"},
+            "rolling_volatility": {"periods": [14 * 24, 30 * 24], "column": "close"},
+            "momentum": {"periods": [10 * 24, 20 * 24], "column": "close"},
+            "zscore": {"periods": [20 * 24], "column": "close"},
+            "macd": {
+                "column": "close",
+                "fast_period": 12 * 24,
+                "slow_period": 26 * 24,
+                "signal_period": 9 * 24,
+            },
+            "ema": {"periods": [10 * 24, 20 * 24, 50 * 24], "column": "close"},
             "target_direction": {"column": "close"},
         },
     )
 
     features_df = preprocessor.add_features(raw_df)
 
+    print(features_df.isnull().sum())
+
     features_df = features_df.fillna(0.0)
+
+    print(features_df)
 
     n = len(features_df)
     train_end = int(n * 0.70)
@@ -54,26 +69,37 @@ def main():
     train_dataset = TimeSeriesDataset(
         train_scaled,
         sequence_length=14,
-        target_col="target_direction",
+        target_col="log_return_24",
     )
     val_dataset = TimeSeriesDataset(
         val_scaled,
         sequence_length=14,
-        target_col="target_direction",
+        target_col="log_return_24",
     )
     test_dataset = TimeSeriesDataset(
         test_scaled,
         sequence_length=14,
-        target_col="target_direction",
+        target_col="log_return_24",
     )
 
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
-    model = SimpleLSTM(input_size=14, hidden_size=256, num_layers=5, output_size=1)
+    i = 0
+    for x, y in train_loader:
+        if i > 5:
+            break
+        print(x.shape, y.shape)
+        i += 1
+
+    model = SimpleLSTM(input_size=23, hidden_size=128, num_layers=2, output_size=1)
     loss_fn = nn.HuberLoss()
-    optim = torch.optim.AdamW(model.parameters(), lr=0.001)
+    optim = torch.optim.AdamW(model.parameters(), lr=0.0001)
+
+    # model = SimpleLinear(input_size=308, hidden_size=16, output_size=1)
+    # loss_fn = nn.MSELoss()
+    # optim = torch.optim.Adam(model.parameters(), lr=0.001)
 
     trainer = ModelTrainer(
         model,
@@ -90,7 +116,7 @@ def main():
         model=model,
         test_loader=test_loader,
         preprocessor=preprocessor,
-        target_col="target_direction",
+        target_col="log_return_24",
     )
 
     test_metrics = evaluator.evaluate()

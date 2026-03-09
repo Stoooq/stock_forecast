@@ -61,7 +61,7 @@ class YahooFinanceLoader(BaseDataLoader):
         ##TODO add hydra lib for config
 
     def fetch_data(self) -> pd.DataFrame:
-        data = yf.download(self.tickers, start=self.start_date, end=self.end_date)
+        data = yf.download(self.tickers, start=self.start_date, end=self.end_date, interval=self.interval)
 
         ##TODO add retry to download data from yfinance
 
@@ -76,6 +76,7 @@ class YahooFinanceLoader(BaseDataLoader):
         df = df.reset_index()
 
         df.columns = [str(col).lower() for col in df.columns]
+        df = df.rename(columns={"datetime": "date"})
 
         desired_columns = ["date", "open", "high", "low", "close", "volume"]
         df = df[desired_columns]
