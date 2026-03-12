@@ -1,8 +1,7 @@
-from typing import Any, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from torch.utils.data import DataLoader
@@ -59,7 +58,10 @@ class ModelEvaluator:
         return {"rmse": rmse, "mae": mae, "directional_accuracy": da}
 
     def plot_results(
-        self, y_true: np.ndarray, y_pred: np.ndarray, save_path: Optional[str] = None
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        save_path: str | None = None,
     ) -> None:
         plt.figure(figsize=(12, 6))
         plt.plot(y_true, label="Actual", color="blue", alpha=0.7)
@@ -80,7 +82,7 @@ class ModelEvaluator:
 
         if save_path:
             plt.savefig(save_path)
-            print(f"Wykres zapisany w: {save_path}")
+            print(f"Plot saved in {save_path}")
         else:
             plt.show()
 
@@ -88,21 +90,13 @@ class ModelEvaluator:
 
     def evaluate(self) -> dict[str, float]:
         y_true, y_pred = self._generate_predictions()
+        print(y_true.shape, y_pred.shape)
 
-        # columns = self.preprocessor.scaler.feature_names_in_
+        y_true_unscaled_df = self.preprocessor.inverse_transform_target(y_true)
+        y_pred_unscaled_df = self.preprocessor.inverse_transform_target(y_pred)
 
-        # dummy_df_true = pd.DataFrame(np.zeros((len(y_true_scaled), len(columns))), columns=columns)
-        # dummy_df_true[self.target_col] = y_true_scaled
-        # y_true_unscaled_df = self.preprocessor.inverse_transform(dummy_df_true)
-        # y_true = y_true_unscaled_df[self.target_col].to_numpy()
+        metrics = self.calculate_metrics(y_true_unscaled_df, y_pred_unscaled_df)
 
-        # dummy_df_pred = pd.DataFrame(np.zeros((len(y_pred_scaled), len(columns))), columns=columns)
-        # dummy_df_pred[self.target_col] = y_pred_scaled
-        # y_pred_unscaled_df = self.preprocessor.inverse_transform(dummy_df_pred)
-        # y_pred = y_pred_unscaled_df[self.target_col].to_numpy()
+        self.plot_results(y_true_unscaled_df, y_pred_unscaled_df)
 
-        metrics = self.calculate_metrics(y_true, y_pred)
-
-        self.plot_results(y_true, y_pred)
-
-        return metrics, y_true, y_pred
+        return metrics, y_true_unscaled_df, y_pred_unscaled_df

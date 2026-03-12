@@ -44,11 +44,7 @@ def main():
 
     features_df = preprocessor.add_features(raw_df)
 
-    print(features_df.isnull().sum())
-
     features_df = features_df.fillna(0.0)
-
-    print(features_df)
 
     n = len(features_df)
     train_end = int(n * 0.70)
@@ -58,14 +54,12 @@ def main():
     val_df = features_df.iloc[train_end:val_end]
     test_df = features_df.iloc[val_end:]
 
-    print(train_df)
-
-    preprocessor.fit(train_df, target_col="target_direction")
+    preprocessor.fit(train_df, target_col="log_return_24")
     train_scaled = preprocessor.transform(train_df)
     val_scaled = preprocessor.transform(val_df)
     test_scaled = preprocessor.transform(test_df)
 
-    print(train_scaled)
+    print(test_scaled.shape)
 
     train_dataset = TimeSeriesDataset(
         train_scaled,

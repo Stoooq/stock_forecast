@@ -10,6 +10,11 @@ class DataPreprocessor:
         self.features = features
         self.scaler = None
 
+        self.feature_scaler = StandardScaler()
+        self.target_scaler = StandardScaler()
+        self.features_cols = None
+        self.target_col = None
+
     def add_features(self, data: pd.DataFrame) -> pd.DataFrame:
         for key, value in self.features.items():
             method_name = f"_compute_{key}"
@@ -139,23 +144,70 @@ class DataPreprocessor:
 
         return df
 
-    def fit(self, data: pd.DataFrame, target_col: str):
-        self.scaler = StandardScaler()
-        self.features_to_scale = [col for col in data.columns if col != target_col]
-        self.scaler.fit(data[self.features_to_scale])
+    def fit(
+        self,
+        data: pd.DataFrame,
+        target_col: str,
+        no_scale_cols: list[str] | None = None,
+    ):
+        if no_scale_cols is None:
+            no_scale_cols = []
+
+        self.target_col = target_col
+        self.features_to_scale = [
+            col
+            for col in data.columns
+            if col not in no_scale_cols and col != target_col
+        ]
+
+        self.feature_scaler.fit(data[self.features_to_scale])
+
+        if target_col not in no_scale_cols:
+            self.target_scaler.fit(data[[target_col]])
 
     def transform(self, data: pd.DataFrame) -> pd.DataFrame:
         result = data.copy()
-        result[self.features_to_scale] = self.scaler.transform(data[self.features_to_scale])
+
+        if self.features_to_scale:
+            result[self.features_to_scale] = self.feature_scaler.transform(
+                data[self.features_to_scale],
+            )
+
+        if (
+            hasattr(self.target_scaler, "scale_")
+            and self.target_scaler.scale_ is not None
+        ):
+            result[self.target_col] = self.target_scaler.transform(
+                data[[self.target_col]],
+            )
+
         return result
 
-    def inverse_transform(self, data: pd.DataFrame) -> pd.DataFrame:
+    def inverse_transform_target(self, target: np.ndarray) -> np.ndarray:
+        if (
+            not hasattr(self.target_scaler, "scale_")
+            or self.target_scaler.scale_ is None
+        ):
+            return target
+
+        y_pred_reshaped = target.reshape(-1, 1)
+
+        return self.target_scaler.inverse_transform(y_pred_reshaped).flatten()
+
+    def inverse_transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
         result = data.copy()
-        result[self.features_to_scale] = self.scaler.inverse_transform(data[self.features_to_scale])
+
+        if self.features_to_scale:
+            result[self.features_to_scale] = self.feature_scaler.inverse_transform(
+                data[self.features_to_scale],
+            )
         return result
 
-    def fit_transorm(self, data: pd.DataFrame, target_col: str):
-        self.fit(data, target_col)
-        data_scaled = self.transform(data)
-
-        return data_scaled
+    def fit_transform(
+        self,
+        data: pd.DataFrame,
+        target_col: str,
+        no_scale_cols: list[str] | None = None,
+    ) -> pd.DataFrame:
+        self.fit(data, target_col, no_scale_cols)
+        return self.transform(data)
