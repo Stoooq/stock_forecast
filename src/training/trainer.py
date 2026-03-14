@@ -73,6 +73,7 @@ class ModelTrainer:
                 print(train_loss)
 
                 val_loss = self._validate_epoch()
+                print(val_loss)
 
                 mlflow.log_metric("train_loss", train_loss, step=epoch)
                 mlflow.log_metric("val_loss", val_loss, step=epoch)
