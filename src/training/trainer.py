@@ -65,17 +65,16 @@ class ModelTrainer:
             "learning_rate": 1e-2,
             "batch_size": 64,
         }
-        with mlflow.start_run():
-            mlflow.log_params(params)
+        mlflow.log_params(params)
 
-            for epoch in range(params["epochs"]):
-                train_loss = self._train_epoch()
-                print(train_loss)
+        for epoch in range(params["epochs"]):
+            train_loss = self._train_epoch()
+            print(train_loss)
 
-                val_loss = self._validate_epoch()
-                print(val_loss)
+            val_loss = self._validate_epoch()
+            print(val_loss)
 
-                mlflow.log_metric("train_loss", train_loss, step=epoch)
-                mlflow.log_metric("val_loss", val_loss, step=epoch)
+            mlflow.log_metric("train_loss", train_loss, step=epoch)
+            mlflow.log_metric("val_loss", val_loss, step=epoch)
 
-            mlflow.pytorch.log_model(self.model, name="model")
+        mlflow.pytorch.log_model(self.model, name="model")
