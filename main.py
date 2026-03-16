@@ -5,8 +5,7 @@ import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 
 from src.data_manager import MultiTickerDataManager
-from src.evaluation.backtester import VectorizedBacktester
-from src.evaluation.evaluator import ModelEvaluator
+from src.evaluation.portfolio_evaluator import PortfolioEvaluator
 from src.models.simple_linear import SimpleLinear
 from src.models.simple_lstm import SimpleLSTM
 from src.training.trainer import ModelTrainer
@@ -17,11 +16,11 @@ def main(cfg: DictConfig):
     print("Running with config: ")
     print(OmegaConf.to_yaml(cfg))
 
-    tickers = list(cfg.data.tickers)
-    sequence_length = cfg.data.sequence_length
-    batch_size = cfg.data.batch_size
-
-    data_manager = MultiTickerDataManager(tickers=tickers, sequence_length=sequence_length, batch_size=batch_size)
+    data_manager = MultiTickerDataManager(
+        tickers=list(cfg.data.tickers),
+        sequence_length=cfg.data.sequence_length,
+        batch_size=cfg.data.batch_size,
+    )
     train_loader, val_loader = data_manager.build_dataloaders()
 
     model = SimpleLSTM(
@@ -38,38 +37,31 @@ def main(cfg: DictConfig):
     # optim = torch.optim.Adam(model.parameters(), lr=0.001)
 
     trainer = ModelTrainer(
-        model,
-        train_loader,
-        val_loader,
-        loss_fn,
-        optim,
-        "c",
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        criterion=loss_fn,
+        optimizer=optim,
+        epochs=cfg.training.epochs,
     )
 
     with mlflow.start_run():
+        mlflow.log_params(OmegaConf.to_container(cfg.training, resolve=True))
+        mlflow.log_params(OmegaConf.to_container(cfg.model, resolve=True))
+
         trainer.train()
 
-        for ticker, test_loader in data_manager.test_loaders.items():
-            preprocessor = data_manager.preprocessors[ticker]
-            dates = data_manager.test_dates[ticker]
-            close = data_manager.test_close[ticker]
+        portfolio_evaluator = PortfolioEvaluator(
+            model=model,
+            data_manager=data_manager,
+            target_col="log_return_24",
+        )
 
-            evaluator = ModelEvaluator(
-                ticker=ticker,
-                model=model,
-                test_loader=test_loader,
-                preprocessor=preprocessor,
-                target_col="log_return_24",
-            )
+        portfolio_metrics, _ = portfolio_evaluator.run()
 
-            test_metrics, y_true, y_pred = evaluator.evaluate()
-            print(test_metrics)
-
-            backtester = VectorizedBacktester(ticker, close, dates, y_true, y_pred)
-            metrics = backtester.run()
-            print(metrics)
-
-            backtester.plot_equity()
+        mlflow.log_metrics(portfolio_metrics)
+        portfolio_evaluator.save_detailed_metrics("detailed_ticker_metrics.json")
+        mlflow.log_artifact("detailed_ticker_metrics.json")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ class VectorizedBacktester:
         ticker,
         close,
         dates: np.ndarray,
-        prices: np.ndarray,
         predictions: np.ndarray,
         initial_capital: float = 10000.0,
         trading_fee: float = 0.001,
@@ -17,7 +16,7 @@ class VectorizedBacktester:
     ):
         self.ticker = ticker
         self.df = pd.DataFrame(
-            {"price": prices, "prediction": predictions, "close": close},
+            {"prediction": predictions, "close": close},
             index=pd.to_datetime(dates),
         )
         self.initial_capital = initial_capital
@@ -71,7 +70,7 @@ class VectorizedBacktester:
         return metrics
 
     def plot_equity(self):
-        plt.figure(figsize=(14, 7))
+        fig = plt.figure(figsize=(14, 7))
         plt.plot(
             self.df.index,
             self.df["strategy_equity"],
@@ -93,7 +92,8 @@ class VectorizedBacktester:
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        plt.show()
+
+        return fig
 
     def run(self) -> dict[str, float]:
         self.df["signal"] = self._generate_signals(threshold=0.0, short=False)

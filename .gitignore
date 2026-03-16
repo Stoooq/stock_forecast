@@ -7,4 +7,5 @@ todo.md
 data/
 mlruns/
 mlflow.db
-.outputs/
+outputs/
+detailed_ticker_metrics.json

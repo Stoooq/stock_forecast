@@ -1,5 +1,6 @@
 import mlflow
 import torch
+from tqdm import tqdm
 
 
 class ModelTrainer:
@@ -10,14 +11,14 @@ class ModelTrainer:
         val_loader: torch.utils.data.DataLoader,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        config,
+        epochs: int,
     ):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.loss_fn = criterion
         self.optim = optimizer
-        self.config = config
+        self.epochs = epochs
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
 
@@ -60,19 +61,10 @@ class ModelTrainer:
         return avg_loss
 
     def train(self):
-        params = {
-            "epochs": 10,
-            "learning_rate": 1e-2,
-            "batch_size": 64,
-        }
-        mlflow.log_params(params)
-
-        for epoch in range(params["epochs"]):
+        for epoch in tqdm(range(self.epochs)):
             train_loss = self._train_epoch()
-            print(train_loss)
 
             val_loss = self._validate_epoch()
-            print(val_loss)
 
             mlflow.log_metric("train_loss", train_loss, step=epoch)
             mlflow.log_metric("val_loss", val_loss, step=epoch)

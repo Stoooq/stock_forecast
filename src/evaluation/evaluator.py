@@ -63,9 +63,8 @@ class ModelEvaluator:
         self,
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        save_path: str | None = None,
     ) -> None:
-        plt.figure(figsize=(12, 6))
+        fig = plt.figure(figsize=(14, 7))
         plt.plot(y_true, label="Actual", color="blue", alpha=0.7)
         plt.plot(
             y_pred,
@@ -82,15 +81,9 @@ class ModelEvaluator:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
-        if save_path:
-            plt.savefig(save_path)
-            print(f"Plot saved in {save_path}")
-        else:
-            plt.show()
+        return fig
 
-        plt.close()
-
-    def evaluate(self) -> dict[str, float]:
+    def run(self):
         y_true, y_pred = self._generate_predictions()
 
         y_true_unscaled_df = self.preprocessor.inverse_transform_target(y_true)
@@ -98,6 +91,6 @@ class ModelEvaluator:
 
         metrics = self.calculate_metrics(y_true_unscaled_df, y_pred_unscaled_df)
 
-        self.plot_results(y_true_unscaled_df, y_pred_unscaled_df)
+        # self.plot_results(y_true_unscaled_df, y_pred_unscaled_df)
 
         return metrics, y_true_unscaled_df, y_pred_unscaled_df
