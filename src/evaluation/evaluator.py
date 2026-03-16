@@ -10,12 +10,14 @@ from torch.utils.data import DataLoader
 class ModelEvaluator:
     def __init__(
         self,
+        ticker: str,
         model: torch.nn.Module,
         test_loader: DataLoader,
         preprocessor: Any,
         target_col: str,
     ):
         self.model = model
+        self.ticker = ticker
         self.test_loader = test_loader
         self.preprocessor = preprocessor
         self.target_col = target_col
@@ -73,7 +75,7 @@ class ModelEvaluator:
             linestyle="--",
         )
 
-        plt.title("Pred vs True")
+        plt.title(f"Pred vs True ({self.ticker})")
         plt.xlabel("Days")
         plt.ylabel("Price")
         plt.legend()
@@ -90,7 +92,6 @@ class ModelEvaluator:
 
     def evaluate(self) -> dict[str, float]:
         y_true, y_pred = self._generate_predictions()
-        print(y_true.shape, y_pred.shape)
 
         y_true_unscaled_df = self.preprocessor.inverse_transform_target(y_true)
         y_pred_unscaled_df = self.preprocessor.inverse_transform_target(y_pred)

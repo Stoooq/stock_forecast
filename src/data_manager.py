@@ -15,6 +15,7 @@ class MultiTickerDataManager:
         self.test_loaders = {}
         self.preprocessors = {}
         self.test_dates = {}
+        self.test_close = {}
 
     def build_dataloaders(self) -> tuple[DataLoader, DataLoader]:
         all_train_datasets = []
@@ -28,7 +29,7 @@ class MultiTickerDataManager:
             preprocessor = DataPreprocessor(
                 features={
                     "log_return": {
-                        "periods": [1 * 24, 2 * 24, 3 * 24],
+                        "periods": [1, 1 * 24, 2 * 24, 3 * 24],
                         "column": "close",
                     },
                     "rsi": {"periods": [14 * 24, 21 * 24, 28 * 24], "column": "close"},
@@ -89,6 +90,7 @@ class MultiTickerDataManager:
             )
             self.preprocessors[ticker] = preprocessor
             self.test_dates[ticker] = test_df.index[self.sequence_length:]
+            self.test_close[ticker] = test_df["close"]
 
         global_train_dataset = ConcatDataset(all_train_datasets)
         global_val_dataset = ConcatDataset(all_val_datasets)
@@ -103,7 +105,7 @@ class MultiTickerDataManager:
             config="c",
             tickers=[ticker],
             start_date="2024-06-01",
-            end_date="2026-06-01",
+            end_date="2026-03-01",
             save_dir="data/raw/",
             interval="1h",
         )

@@ -52,8 +52,10 @@ def main(cfg: DictConfig):
         for ticker, test_loader in data_manager.test_loaders.items():
             preprocessor = data_manager.preprocessors[ticker]
             dates = data_manager.test_dates[ticker]
+            close = data_manager.test_close[ticker]
 
             evaluator = ModelEvaluator(
+                ticker=ticker,
                 model=model,
                 test_loader=test_loader,
                 preprocessor=preprocessor,
@@ -63,7 +65,7 @@ def main(cfg: DictConfig):
             test_metrics, y_true, y_pred = evaluator.evaluate()
             print(test_metrics)
 
-            backtester = VectorizedBacktester(dates, y_true, y_pred)
+            backtester = VectorizedBacktester(ticker, close, dates, y_true, y_pred)
             metrics = backtester.run()
             print(metrics)
 
